@@ -1,4 +1,4 @@
-// GET /api/info — mismos campos que la versión de Azure para comparar ambas nubes.
+// GET /api/info — mismos campos que la versión de Cloud Run functions para comparar ambas nubes.
 // En Lambda, cada "instancia" es un contenedor (execution environment).
 const crypto = require('node:crypto');
 

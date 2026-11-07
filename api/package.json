@@ -1,16 +1,16 @@
 {
   "name": "serverless-lab-api",
   "version": "1.0.0",
-  "description": "API serverless del laboratorio (Azure Functions, modelo de programación v4 para Node.js)",
-  "main": "src/functions/*.js",
+  "description": "API serverless del laboratorio (Cloud Run functions, Node.js 22, Functions Framework)",
+  "main": "index.js",
   "scripts": {
-    "start": "func start",
-    "test": "node --test test/"
+    "start": "functions-framework --target=info --port=8080",
+    "test": "node --test"
   },
   "dependencies": {
-    "@azure/functions": "^4.5.0"
+    "@google-cloud/functions-framework": "^5.0.5"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

@@ -1,6 +1,13 @@
 node_modules/
-api/local.settings.json
 .DS_Store
 .env
+
+# Credenciales que genera google-github-actions/auth (nunca se suben)
+gha-creds-*.json
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase.preview.json
 
 floci/.build/

@@ -15,7 +15,7 @@ const questions = [
     ],
     answer: 1,
     explanation:
-      'Siempre hay servidores. "Serverless" significa que tú no los aprovisionas, parcheas ni escalas: el proveedor (Azure) se encarga y tú te concentras en el código.'
+      'Siempre hay servidores. "Serverless" significa que tú no los aprovisionas, parcheas ni escalas: el proveedor (Google Cloud) se encarga y tú te concentras en el código.'
   },
   {
     id: 'q2',
@@ -29,12 +29,12 @@ const questions = [
     ],
     answer: 1,
     explanation:
-      'El modelo de consumo cobra por ejecuciones y recursos usados mientras la función corre. Si nadie la invoca, el costo de cómputo tiende a cero. (Este lab usa el plan Free de Static Web Apps, que incluye la API administrada sin costo.)'
+      'El modelo de consumo cobra por ejecuciones y recursos usados mientras la función corre. Si nadie la invoca, el costo de cómputo tiende a cero. (Este lab cabe en la capa gratuita mensual de Cloud Run functions y en el plan Spark de Firebase Hosting.)'
   },
   {
     id: 'q3',
     concept: 'FaaS y triggers',
-    text: '¿Qué hace que una Azure Function se ejecute?',
+    text: '¿Qué hace que una Cloud Run function se ejecute?',
     options: [
       'Un trigger (disparador): una petición HTTP, un mensaje en una cola, un temporizador, etc.',
       'Se ejecuta en un bucle infinito esperando trabajo',
@@ -57,7 +57,7 @@ const questions = [
     ],
     answer: 1,
     explanation:
-      'Si no hay una instancia "caliente", Azure debe asignar recursos, cargar el runtime y tu código. Esa primera invocación tarda más. En la pestaña "Laboratorio en vivo" puedes verlo con el campo coldStart.'
+      'Si no hay una instancia "caliente", Google Cloud debe asignar recursos, cargar el runtime y tu código. Esa primera invocación tarda más. En la pestaña "Laboratorio en vivo" puedes verlo con el campo coldStart.'
   },
   {
     id: 'q5',
@@ -66,12 +66,12 @@ const questions = [
     options: [
       'El contador es permanente y compartido por todos los usuarios',
       'El contador se reinicia cuando la instancia se recicla y no se comparte entre instancias',
-      'Azure lo guarda automáticamente en una base de datos',
+      'Google Cloud lo guarda automáticamente en una base de datos',
       'La función no se puede desplegar con variables globales'
     ],
     answer: 1,
     explanation:
-      'Las funciones deben diseñarse "stateless". La memoria de una instancia es efímera y cada instancia tiene la suya. Para persistir estado se usa un servicio externo (Table Storage, Cosmos DB, etc.).'
+      'Las funciones deben diseñarse "stateless". La memoria de una instancia es efímera y cada instancia tiene la suya. Para persistir estado se usa un servicio externo (Firestore, Cloud Storage, Cloud SQL, etc.).'
   },
   {
     id: 'q6',
@@ -89,45 +89,45 @@ const questions = [
   },
   {
     id: 'q7',
-    concept: 'Static Web Apps',
-    text: 'En Azure Static Web Apps, ¿quién sirve los archivos HTML/CSS/JS?',
+    concept: 'Firebase Hosting',
+    text: 'En Firebase Hosting, ¿quién sirve los archivos HTML/CSS/JS?',
     options: [
       'Una máquina virtual que tú administras',
-      'Una red de distribución global administrada por Azure; no hay servidor web que configurar',
+      'Una red de distribución global (CDN) administrada por Google; no hay servidor web que configurar',
       'El propio navegador del estudiante',
-      'Una Azure Function por cada archivo'
+      'Una Cloud Run function por cada archivo'
     ],
     answer: 1,
     explanation:
-      'El contenido estático se publica en infraestructura global administrada. Las peticiones a /api/* se enrutan a las funciones administradas que viven en la carpeta api/.'
+      'El contenido estático se publica en infraestructura global administrada. Las peticiones a /api/* se reescriben (rewrites en firebase.json) hacia los servicios Cloud Run functions que salen de la carpeta api/.'
   },
   {
     id: 'q8',
     concept: 'API administrada',
     text: 'En este lab, ¿por qué el frontend puede llamar a /api/answer sin configurar CORS?',
     options: [
-      'Porque CORS no existe en Azure',
-      'Porque Static Web Apps sirve el sitio y la API bajo el mismo dominio (mismo origen)',
+      'Porque CORS no existe en Google Cloud',
+      'Porque Firebase Hosting sirve el sitio y reescribe /api/* hacia las funciones bajo el mismo dominio (mismo origen)',
       'Porque el navegador desactiva CORS para estudiantes',
       'Porque la función tiene authLevel "admin"'
     ],
     answer: 1,
     explanation:
-      'Static Web Apps actúa como proxy: el sitio y /api comparten origen, así que el navegador no necesita CORS. Es una de las ventajas de la API "managed".'
+      'Firebase Hosting actúa como proxy: el sitio y /api comparten origen, así que el navegador no necesita CORS. (En el anexo de AWS, S3 y API Gateway son orígenes distintos y por eso sí hace falta.)'
   },
   {
     id: 'q9',
-    concept: 'CI/CD sin SPN',
-    text: 'Tu suscripción de Azure for Students no permite crear un Service Principal. ¿Cómo despliega GitHub Actions?',
+    concept: 'CI/CD sin llaves',
+    text: 'No quieres guardar una llave JSON de service account en GitHub. ¿Cómo despliega GitHub Actions a Google Cloud?',
     options: [
-      'No es posible desplegar sin Service Principal',
-      'Con el token de despliegue de la Static Web App guardado como secreto del repositorio',
-      'Escribiendo tu usuario y contraseña de Azure en el YAML',
+      'No es posible desplegar sin una llave JSON',
+      'Con Workload Identity Federation (OIDC): GitHub presenta un token firmado y Google Cloud lo cambia por credenciales temporales de una service account de permisos mínimos',
+      'Escribiendo tu contraseña de Google en el YAML',
       'Subiendo los archivos manualmente por FTP'
     ],
     answer: 1,
     explanation:
-      'El token de despliegue (deployment token) autoriza SOLO a publicar contenido en ESA Static Web App. No da acceso a la suscripción, por eso no requiere permisos de Entra ID. Se guarda como el secreto AZURE_STATIC_WEB_APPS_API_TOKEN.'
+      'Con Workload Identity Federation no existe ninguna credencial de larga duración: el token OIDC de cada ejecución dura minutos y solo el repositorio autorizado puede canjearlo por la identidad de una service account con permisos mínimos. No hay secreto que filtrar.'
   },
   {
     id: 'q10',
@@ -141,7 +141,7 @@ const questions = [
     ],
     answer: 1,
     explanation:
-      'Static Web Apps crea un entorno de staging por Pull Request (el plan Free permite unos pocos simultáneos). Al cerrar el PR, el job "close" lo elimina.'
+      'Firebase Hosting crea un canal de preview por Pull Request y el pipeline despliega copias de las funciones con sufijo -pr<N>, así la preview tiene su propia API. Al cerrar el PR, el job "close" borra el canal y esas funciones.'
   }
 ];
 

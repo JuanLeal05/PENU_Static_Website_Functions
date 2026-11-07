@@ -1,4 +1,4 @@
-// Lógica pura (sin dependencias de Azure) para poder probarla con `npm test`
+// Lógica pura (sin dependencias de ninguna nube) para poder probarla con `npm test`
 // dentro del pipeline antes de desplegar.
 const crypto = require('node:crypto');
 const { questions } = require('./questions');

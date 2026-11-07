@@ -1,4 +1,4 @@
-// Frontend 100 % estático: toda la "inteligencia" vive en /api (Azure Functions).
+// Frontend 100 % estático: toda la "inteligencia" vive en /api (Cloud Run functions).
 
 const $ = (sel) => document.querySelector(sel);
 const API_BASE = (window.LAB_API_BASE || '').replace(/\/$/, '');
@@ -48,7 +48,7 @@ async function checkApi() {
     logInfo(info, ms);
   } catch (e) {
     status.className = 'status bad';
-    status.textContent = `La API no respondió (${e.message}). ¿Desplegaste la carpeta api/?`;
+    status.textContent = `La API no respondió (${e.message}). ¿Desplegaste las funciones lab-*?`;
   }
 }
 
@@ -183,9 +183,9 @@ $('#pipeline-form').addEventListener('submit', (e) => {
   const okWhere = f.get('where') === 'secret';
   const okApi = f.get('api') === 'api';
   $('#pipeline-out').innerHTML =
-    (okWhere ? '✔ El token va como <em>secret</em>; nunca en el código.' : '✘ Un token en el repositorio queda expuesto: usa un secreto de GitHub.') +
+    (okWhere ? '✔ Con OIDC no hay llave que guardar: el token de cada ejecución dura minutos.' : '✘ Una llave en el repositorio queda expuesta durante años: usa Workload Identity Federation.') +
     '<br>' +
-    (okApi ? '✔ <code>api_location: api</code>.' : '✘ Las funciones están en la carpeta <code>api</code>.') +
+    (okApi ? '✔ <code>--source=api</code>.' : '✘ Las funciones están en la carpeta <code>api</code>.') +
     '<br><small>Nota: esta revisión corre en tu navegador, no en una función. ¿Qué diferencia hay en seguridad?</small>';
 });
 

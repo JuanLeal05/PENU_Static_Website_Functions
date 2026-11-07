@@ -1,0 +1,21 @@
+{
+  "hosting": {
+    "public": "src",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        ]
+      }
+    ],
+    "rewrites": [
+      { "source": "/api/info",        "run": { "serviceId": "lab-info",        "region": "us-central1" } },
+      { "source": "/api/questions",   "run": { "serviceId": "lab-questions",   "region": "us-central1" } },
+      { "source": "/api/answer",      "run": { "serviceId": "lab-answer",      "region": "us-central1" } },
+      { "source": "/api/certificate", "run": { "serviceId": "lab-certificate", "region": "us-central1" } }
+    ]
+  }
+}

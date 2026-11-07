@@ -1,0 +1,155 @@
+# Pipeline CI/CD del laboratorio serverless en Google Cloud.
+# Autenticación: Workload Identity Federation (OIDC). NO hay llaves JSON ni secretos en el repositorio.
+# Variables (no secretas) que debes crear en el repositorio:
+#   Settings → Secrets and variables → Actions → pestaña Variables
+#     GCP_WIF_PROVIDER = projects/<NÚMERO>/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+#     GCP_DEPLOY_SA    = sa-serverless-deploy@serverless-lab-juanleal.iam.gserviceaccount.com
+name: CI/CD Serverless Lab (GCP)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write        # Necesario para pedir el token OIDC a GitHub
+  pull-requests: write   # Para comentar la URL de preview en el PR
+
+env:
+  PROJECT_ID: serverless-lab-juanleal
+  REGION: us-central1
+  FIREBASE_TOOLS_VERSION: 15.34.0
+
+# Evita que dos despliegues del mismo PR (O de main) se pisen entre sí.
+concurrency:
+  group: deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Pruebas de la API
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+
+  deploy_api:
+    name: Desplegar función ${{ matrix.fn }}
+    needs: test
+    # Producción: Push a main. Preview: PR del MISMO repo (Un fork no recibe token OIDC).
+    if: >-
+      (github.event_name == 'pull_request' && github.event.action != 'closed' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fn: [info, questions, answer, certificate]
+    steps:
+      - uses: actions/checkout@v5
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Desplegar lab-${{ matrix.fn }}
+        env:
+          GIT_SHA: ${{ github.sha }}
+          SUFFIX: ${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.pull_request.number) || '' }}
+        run: ./scripts/deploy-api.sh "${{ matrix.fn }}" "$SUFFIX"
+
+  deploy_hosting:
+    name: Desplegar sitio (Firebase Hosting)
+    needs: deploy_api
+    if: >-
+      (github.event_name == 'pull_request' && github.event.action != 'closed' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      # Producción: Publica en el canal live del sitio.
+      - name: Deploy a producción
+        if: github.event_name != 'pull_request'
+        run: >-
+          npx --yes firebase-tools@${FIREBASE_TOOLS_VERSION} deploy
+          --only hosting --project "$PROJECT_ID" --non-interactive
+          --message "$GITHUB_SHA"
+
+      # Preview: Copia firebase.json apuntando los rewrites a lab-*-pr<N> y publica el canal pr-<N>.
+      - name: Deploy de preview (canal del PR)
+        id: preview
+        if: github.event_name == 'pull_request'
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          jq --arg s "-pr${PR}" \
+            '.hosting.rewrites |= map(if .run then .run.serviceId += $s else . end)' \
+            firebase.json > firebase.preview.json
+          OUT=$(npx --yes firebase-tools@${FIREBASE_TOOLS_VERSION} hosting:channel:deploy "pr-${PR}" \
+            --config firebase.preview.json --expires 7d --project "$PROJECT_ID" --non-interactive)
+          echo "$OUT"
+          URL=$(echo "$OUT" | grep -oE 'https://[A-Za-z0-9.-]+\.web\.app' | head -1)
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Comentar la URL de preview en el PR
+        if: github.event_name == 'pull_request' && steps.preview.outputs.url != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          URL: ${{ steps.preview.outputs.url }}
+        run: |
+          BODY="🔎 **Preview del PR #${PR}:** ${URL}
+          API del preview: \`lab-info-pr${PR}\`, \`lab-questions-pr${PR}\`, \`lab-answer-pr${PR}\`, \`lab-certificate-pr${PR}\` (commit \`${GITHUB_SHA::7}\`). Producción no cambia hasta el merge."
+          gh pr comment "$PR" --edit-last --create-if-none --body "$BODY" \
+            || gh pr comment "$PR" --body "$BODY"
+
+  close_pull_request_job:
+    name: Cerrar entorno de preview
+    if: >-
+      github.event_name == 'pull_request' && github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Borrar canal de preview y funciones del PR
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          npx --yes firebase-tools@${FIREBASE_TOOLS_VERSION} hosting:channel:delete "pr-${PR}" \
+            --force --project "$PROJECT_ID" --non-interactive || echo "canal pr-${PR} no existía"
+          for fn in info questions answer certificate; do
+            gcloud functions delete "lab-${fn}-pr${PR}" --gen2 --region="$REGION" \
+              --project="$PROJECT_ID" --quiet || echo "lab-${fn}-pr${PR} no existía"
+          done

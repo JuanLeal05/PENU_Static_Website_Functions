@@ -2,36 +2,34 @@
 //  - coldStart: true en la primera invocación que atiende esta instancia.
 //  - invocationsOnThisInstance: contador EN MEMORIA (se pierde al reciclar = stateless).
 //  - instanceId: distinto por instancia (si ves varios, la plataforma escaló).
-const { app } = require('@azure/functions');
+const functions = require('@google-cloud/functions-framework');
 const crypto = require('node:crypto');
+const { log } = require('../lib/http');
 
-// Este código corre UNA vez, cuando la instancia carga el módulo.
+// Este código corre UNA vez, cuando la instancia carga el módulo (fase de cold start).
 const instanceId = crypto.randomUUID().slice(0, 8);
 const instanceStartedAt = new Date().toISOString();
 let invocations = 0;
 
-app.http('info', {
-  methods: ['GET'],
-  authLevel: 'anonymous',
-  route: 'info',
-  handler: async (request, context) => {
-    invocations++;
-    const started = Date.now();
-    context.log(`Instancia ${instanceId}, invocación #${invocations}`);
+functions.http('info', (req, res) => {
+  invocations++;
+  const started = Date.now();
+  // Cloud Run pone el identificador de traza en este encabezado: sirve como id de invocación.
+  const invocationId = (req.get('x-cloud-trace-context') || '').split('/')[0] || crypto.randomUUID();
+  log(`Instancia ${instanceId}, invocación #${invocations}`, { instanceId, invocations });
 
-    return {
-      headers: { 'Cache-Control': 'no-store' },
-      jsonBody: {
-        instanceId,
-        instanceStartedAt,
-        coldStart: invocations === 1,
-        invocationsOnThisInstance: invocations,
-        invocationId: context.invocationId,
-        processUptimeSeconds: Math.round(process.uptime()),
-        nodeVersion: process.version,
-        region: process.env.REGION_NAME || 'local',
-        serverTimeMs: Date.now() - started
-      }
-    };
-  }
+  res.set('Cache-Control', 'no-store').json({
+    instanceId,
+    instanceStartedAt,
+    coldStart: invocations === 1,
+    invocationsOnThisInstance: invocations,
+    invocationId,
+    processUptimeSeconds: Math.round(process.uptime()),
+    nodeVersion: process.version,
+    region: process.env.REGION_NAME || 'local',
+    service: process.env.K_SERVICE || 'local',
+    revision: process.env.K_REVISION || 'local',
+    version: (process.env.GIT_SHA || 'manual').slice(0, 7),
+    serverTimeMs: Date.now() - started
+  });
 });

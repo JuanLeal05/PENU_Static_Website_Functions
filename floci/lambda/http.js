@@ -1,5 +1,5 @@
 // Adaptador HTTP para API Gateway (HTTP API, payload 2.0).
-// Es el equivalente a lo que @azure/functions hace por ti en Azure.
+// Es el equivalente a lo que @google-cloud/functions-framework hace por ti en GCP.
 
 function json(statusCode, body) {
   return {

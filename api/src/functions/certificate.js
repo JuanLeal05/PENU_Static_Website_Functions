@@ -1,36 +1,27 @@
 // POST /api/certificate  { "name": "Ana", "answers": [{ "id": "q1", "choice": 1 }, ...] }
 // Califica el formulario completo en el servidor y emite un certificado.
-const { app } = require('@azure/functions');
+const functions = require('@google-cloud/functions-framework');
 const { grade, sanitizeName, certificateCode } = require('../lib/quiz');
+const { readJsonBody, log } = require('../lib/http');
 
-app.http('certificate', {
-  methods: ['POST'],
-  authLevel: 'anonymous',
-  route: 'certificate',
-  handler: async (request, context) => {
-    let body;
-    try {
-      body = await request.json();
-    } catch {
-      return { status: 400, jsonBody: { error: 'El cuerpo debe ser JSON' } };
-    }
+functions.http('certificate', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Usa POST' });
 
-    const name = sanitizeName(body?.name);
-    if (name.length < 2) {
-      return { status: 400, jsonBody: { error: 'Escribe tu nombre (mínimo 2 caracteres)' } };
-    }
+  const body = readJsonBody(req);
+  if (!body) return res.status(400).json({ error: 'El cuerpo debe ser JSON' });
 
-    const result = grade(body?.answers);
-    const issuedAt = new Date().toISOString();
-    context.log(`Certificado para "${name}": ${result.score}/${result.total}`);
+  const name = sanitizeName(body.name);
+  if (name.length < 2) return res.status(400).json({ error: 'Escribe tu nombre (mínimo 2 caracteres)' });
 
-    return {
-      jsonBody: {
-        name,
-        ...result,
-        issuedAt,
-        code: result.passed ? certificateCode(name, result.score, issuedAt) : null
-      }
-    };
-  }
+  const result = grade(body.answers);
+  const issuedAt = new Date().toISOString();
+  log(`Certificado para "${name}": ${result.score}/${result.total}`);
+
+  res.json({
+    name,
+    ...result,
+    issuedAt,
+    code: result.passed ? certificateCode(name, result.score, issuedAt) : null
+  });
 });

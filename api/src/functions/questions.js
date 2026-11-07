@@ -1,16 +1,9 @@
 // GET /api/questions — devuelve las preguntas SIN las respuestas.
-const { app } = require('@azure/functions');
+const functions = require('@google-cloud/functions-framework');
 const { publicQuestions } = require('../lib/quiz');
+const { log } = require('../lib/http');
 
-app.http('questions', {
-  methods: ['GET'],
-  authLevel: 'anonymous',
-  route: 'questions',
-  handler: async (request, context) => {
-    context.log(`Invocación ${context.invocationId}: listando preguntas`);
-    return {
-      jsonBody: publicQuestions(),
-      headers: { 'Cache-Control': 'no-store' }
-    };
-  }
+functions.http('questions', (req, res) => {
+  log('Listando preguntas');
+  res.set('Cache-Control', 'no-store').json(publicQuestions());
 });
