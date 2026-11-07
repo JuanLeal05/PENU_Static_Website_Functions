@@ -87,6 +87,9 @@ secretos en el repositorio.
 | Pool / proveedor de identidad | `github-pool` / `github-provider` |
 | Variables del repositorio (no secretas) | `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA` |
 
+**Laboratorio desplegado:** repositorio `https://github.com/JuanLeal05/PENU_Static_Website_Functions` ·
+producción `https://serverless-lab-juanleal.web.app`.
+
 Si usas otro ID de proyecto, cámbialo en `.firebaserc`, en `env.PROJECT_ID` del workflow y en el valor por defecto
 de `scripts/deploy-api.sh` y `scripts/analyze-logs.sh`. La región está también en los `rewrites` de `firebase.json`.
 
