@@ -142,6 +142,20 @@ const questions = [
     answer: 1,
     explanation:
       'Firebase Hosting crea un canal de preview por Pull Request y el pipeline despliega copias de las funciones con sufijo -pr<N>, así la preview tiene su propia API. Al cerrar el PR, el job "close" borra el canal y esas funciones.'
+  },
+  {
+    id: 'q11',
+    concept: 'Escalado a cero',
+    text: '¿Qué significa que una función serverless escale a cero?',
+    options: [
+      'Que la función deja de existir',
+      'Que sin tráfico no hay instancias encendidas y no se paga cómputo',
+      'Que solo atiende cero peticiones por segundo',
+      'Que se apaga el sitio estático'
+    ],
+    answer: 1,
+    explanation:
+      'Con --min-instances=0 Cloud Run elimina las instancias inactivas; la siguiente petición paga un cold start.'
   }
 ];
 
