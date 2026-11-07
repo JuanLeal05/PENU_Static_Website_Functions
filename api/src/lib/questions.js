@@ -153,7 +153,7 @@ const questions = [
       'Que solo atiende cero peticiones por segundo',
       'Que se apaga el sitio estático'
     ],
-    answer: 9,
+    answer: 1,
     explanation:
       'Con --min-instances=0 Cloud Run elimina las instancias inactivas; la siguiente petición paga un cold start.'
   }
