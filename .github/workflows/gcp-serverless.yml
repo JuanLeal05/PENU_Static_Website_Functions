@@ -112,7 +112,8 @@ jobs:
           OUT=$(npx --yes firebase-tools@${FIREBASE_TOOLS_VERSION} hosting:channel:deploy "pr-${PR}" \
             --config firebase.preview.json --expires 7d --project "$PROJECT_ID" --non-interactive)
           echo "$OUT"
-          URL=$(echo "$OUT" | grep -oE 'https://[A-Za-z0-9.-]+\.web\.app' | head -1)
+          # La salida incluye primero la "Hosting URL" de producción; la del canal lleva "--pr-<N>-".
+          URL=$(echo "$OUT" | grep -oE "https://[A-Za-z0-9-]+--pr-${PR}-[A-Za-z0-9]+\.web\.app" | head -1)
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
 
       - name: Comentar la URL de preview en el PR
